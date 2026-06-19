@@ -1,0 +1,56 @@
+services:
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"       # AMQP
+      - "15672:15672"     # Management UI  →  http://localhost:15672  (guest/guest)
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  producer:
+    build: ./producer
+    container_name: producer
+    ports:
+      - "8000:8000"       # API  →  http://localhost:8000
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: "5672"
+      RABBITMQ_USER: guest
+      RABBITMQ_PASS: guest
+      RABBITMQ_MGMT_PORT: "15672"
+      QUEUE_NAME: jobs
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  frontend:
+    build: ./frontend
+    container_name: frontend
+    ports:
+      - "5173:5173"       # Vue UI  →  http://localhost:5173
+    depends_on:
+      - producer
+
+  worker:
+    build: ./worker
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: "5672"
+      RABBITMQ_USER: guest
+      RABBITMQ_PASS: guest
+      QUEUE_NAME: jobs
+      PROCESSING_TIME_SECONDS: "5"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    # Standaard 1 worker. Later kun je schalen met:
+    # docker compose up --scale worker=5
+    deploy:
+      replicas: 1

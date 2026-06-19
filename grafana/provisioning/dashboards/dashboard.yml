@@ -1,0 +1,7 @@
+apiVersion: 1
+providers:
+  - name: keda-poc
+    folder: KEDA PoC
+    type: file
+    options:
+      path: /etc/grafana/provisioning/dashboards

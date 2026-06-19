@@ -1,0 +1,49 @@
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: rabbitmq-trigger-auth
+spec:
+  secretTargetRef:
+    - parameter: username
+      name: rabbitmq-credentials
+      key: username
+    - parameter: password
+      name: rabbitmq-credentials
+      key: password
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: worker-scaler
+spec:
+  scaleTargetRef:
+    name: worker
+  minReplicaCount: 0
+  maxReplicaCount: 10
+  # Hoe vaak KEDA de queue checkt (in seconden)
+  pollingInterval: 5
+  # Hoe lang wachten na de laatste actieve metric voordat naar minReplicaCount geschaald wordt
+  cooldownPeriod: 10
+  triggers:
+    - type: rabbitmq
+      metadata:
+        # http-protocol gebruikt de RabbitMQ Management API
+        protocol: http
+        hostFromEnv: ""
+        host: "http://rabbitmq.default.svc.cluster.local:15672"
+        queueName: jobs
+        mode: QueueLength
+        # 1 worker per 10 berichten in de queue
+        value: "10"
+        vhostName: "/"
+      authenticationRef:
+        name: rabbitmq-trigger-auth
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 15
+          policies:
+            - type: Percent
+              value: 100
+              periodSeconds: 15
