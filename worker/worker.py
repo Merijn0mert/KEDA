@@ -4,6 +4,7 @@ import time
 import signal
 import pika
 import psutil
+import requests
 
 RABBITMQ_HOST = os.environ.get("RABBITMQ_HOST", "rabbitmq")
 RABBITMQ_PORT = int(os.environ.get("RABBITMQ_PORT", "5672"))
@@ -16,10 +17,41 @@ WORKER_ID = os.environ.get("HOSTNAME", "worker-local")
 
 _shutdown = False
 
+total_jobs_processed = 0
+total_processing_time_ms = 0
+
+
+def report_online():
+    try:
+        requests.post(
+            "http://producer:8000/worker/online",
+            json={"worker_id": WORKER_ID},
+            timeout=2
+        )
+    except Exception as e:
+        print(f"[{WORKER_ID}] kon online-status niet melden: {e}", flush=True)
+
+
+def report_offline():
+    try:
+        requests.post(
+            "http://producer:8000/worker/offline",
+            json={"worker_id": WORKER_ID},
+            timeout=2
+        )
+    except Exception as e:
+        print(f"[{WORKER_ID}] kon offline-status niet melden: {e}", flush=True)
+
+
 def handle_signal(signum, frame):
     global _shutdown
     print(f"[{WORKER_ID}] shutdown signaal ontvangen", flush=True)
     _shutdown = True
+    # Meld direct af bij de producer, zodat 'actieve workers' meteen
+    # klopt — ook al moet deze worker zijn huidige job nog afmaken.
+    # KEDA's scale-down betekent: geen nieuwe jobs meer oppakken, dus
+    # dit is het juiste moment om als 'niet meer beschikbaar' te gelden.
+    report_offline()
 
 signal.signal(signal.SIGTERM, handle_signal)
 signal.signal(signal.SIGINT, handle_signal)
@@ -40,7 +72,10 @@ def get_connection():
 
 
 def callback(ch, method, properties, body):
+    global total_jobs_processed, total_processing_time_ms
+
     t_start = time.time()
+
     try:
         payload = json.loads(body)
         job_id = payload.get("job_id", "unknown")
@@ -53,13 +88,42 @@ def callback(ch, method, properties, body):
     print(f"[{WORKER_ID}] ▶ job {job_id} | wachttijd in queue: {wait_time}ms", flush=True)
 
     cpu_before = psutil.cpu_percent(interval=None)
-    time.sleep(PROCESSING_TIME)
-    cpu_after = psutil.cpu_percent(interval=None)
 
-    duration = round((time.time() - t_start) * 1000, 2)
+    processing_start = time.time()
+    time.sleep(PROCESSING_TIME)
+    processing_end = time.time()
+
+    cpu_after = psutil.cpu_percent(interval=None)
+    memory_mb = round(psutil.Process().memory_info().rss / 1024 / 1024, 2)
+
+    duration = round((processing_end - t_start) * 1000, 2)
+    latency_ms = round((processing_end - created_at) * 1000, 2)
+
+    total_jobs_processed += 1
+    total_processing_time_ms += duration
+
+    # Stuur jobs/timing + CPU/geheugen van DEZE worker mee naar de producer.
+    # De producer gebruikt dit om een gemiddelde over alle actieve workers
+    # te tonen, in plaats van zijn eigen (oninteressante) CPU/geheugen.
+    try:
+        requests.post(
+            "http://producer:8000/metrics/update",
+            json={
+                "jobs": 1,
+                "processing_time": latency_ms,
+                "worker_id": WORKER_ID,
+                "cpu_percent": cpu_after,
+                "memory_mb": memory_mb,
+            },
+            timeout=1
+        )
+    except Exception as e:
+        print(f"[{WORKER_ID}] metrics update mislukt: {e}", flush=True)
+
     print(
-        f"[{WORKER_ID}] ✓ job {job_id} | verwerkt in {duration}ms | "
-        f"cpu: {cpu_before}% → {cpu_after}%",
+        f"[{WORKER_ID}] ✓ job {job_id} | "
+        f"worker: {duration}ms | latency: {latency_ms}ms | "
+        f"cpu: {cpu_before}% → {cpu_after}% | mem: {memory_mb}MB",
         flush=True,
     )
 
@@ -80,6 +144,7 @@ def main():
             channel.basic_qos(prefetch_count=1)
             channel.basic_consume(queue=QUEUE_NAME, on_message_callback=callback)
             print(f"[{WORKER_ID}] wachten op jobs in '{QUEUE_NAME}'...", flush=True)
+            report_online()
             channel.start_consuming()
         except pika.exceptions.AMQPConnectionError as e:
             if _shutdown:
@@ -92,6 +157,7 @@ def main():
                 break
             time.sleep(5)
 
+    report_offline()
     print(f"[{WORKER_ID}] gestopt", flush=True)
 
 

@@ -14,7 +14,7 @@ spec:
       labels:
         app: worker
     spec:
-      terminationGracePeriodSeconds: 5 # geeft de worker tijd om de huidige job af te ronden bij scale-down
+      terminationGracePeriodSeconds: 15 # geeft de worker tijd om de huidige job af te ronden bij scale-down
       containers:
         - name: worker
           image: keda-poc-worker:latest

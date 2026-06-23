@@ -40,6 +40,11 @@ spec:
                 secretKeyRef:
                   name: rabbitmq-credentials
                   key: password
+            # Verlaagt het interval waarmee de Management API queue-statistieken
+            # (messages, consumers) ververst. Standaard 5000ms, wat tot 10s
+            # vertraging in de frontend kan veroorzaken.
+            - name: RABBITMQ_management_collect_statistics_interval
+              value: "1000"
           readinessProbe:
             tcpSocket:
               port: 5672

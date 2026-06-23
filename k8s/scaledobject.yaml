@@ -41,8 +41,20 @@ spec:
   advanced:
     horizontalPodAutoscalerConfig:
       behavior:
+        scaleUp:
+          # Zonder dit blok schaalt de HPA in stappen op (met wachttijd
+          # ertussen), zelfs als KEDA al weet dat er 10 workers nodig
+          # zijn. Dit zorgt dat hij in 1x naar het volledige berekende
+          # aantal mag springen.
+          stabilizationWindowSeconds: 30
+          policies:
+            - type: Pods
+              value: 10
+              periodSeconds: 15
         scaleDown:
-          stabilizationWindowSeconds: 15
+          # Zonder dit blok gebruikt de HPA de default van 5 minuten
+          # stabilisatie voor scale-down, ongeacht cooldownPeriod hierboven.
+          stabilizationWindowSeconds: 30
           policies:
             - type: Percent
               value: 100

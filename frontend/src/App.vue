@@ -15,7 +15,8 @@
 
     <main>
       <StatusCards :current="current" />
-
+      <KedaSummaryCard :summary="summary" />
+      
       <div class="two-col">
         <JobControl />
         <div class="card worker-status">
@@ -52,8 +53,9 @@ import StatusCards from './components/StatusCards.vue'
 import JobControl from './components/JobControl.vue'
 import QueueChart from './components/QueueChart.vue'
 import CpuChart from './components/CpuChart.vue'
+import KedaSummaryCard from './components/KedaSummaryCard.vue'
 
-const { current, history, error } = useMetrics(1000)
+const { current, history, error, summary } = useMetrics(1000)
 </script>
 
 <style>

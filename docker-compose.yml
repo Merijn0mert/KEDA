@@ -8,6 +8,11 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
+      # Verlaagt het interval waarmee de Management API queue-statistieken
+      # (messages, consumers) ververst. Standaard 5000ms, wat tot 10s
+      # vertraging in de frontend kan veroorzaken. 1000ms = veel sneller
+      # zichtbaar, met verwaarloosbare overhead voor een PoC.
+      RABBITMQ_management_collect_statistics_interval: "1000"
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "ping"]
       interval: 5s
