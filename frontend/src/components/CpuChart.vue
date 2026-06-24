@@ -1,6 +1,6 @@
 <template>
   <div class="card">
-    <h2>CPU &amp; Geheugen – live</h2>
+    <h2>CPU – live (millicores)</h2>
     <Line :data="chartData" :options="chartOptions" />
   </div>
 </template>
@@ -27,20 +27,31 @@ const chartData = computed(() => {
     labels,
     datasets: [
       {
-        label: 'CPU %',
-        data: h.map(p => p.cpu_percent),
+        label: 'Platform totaal (mc)',
+        data: h.map(p => p.platform_mc ?? 0),
         borderColor: '#f59e0b',
         backgroundColor: 'rgba(245,158,11,0.1)',
         tension: 0.3,
         yAxisID: 'y',
+        borderWidth: 2,
       },
       {
-        label: 'Geheugen (MB)',
-        data: h.map(p => p.memory_mb),
-        borderColor: '#ef4444',
-        backgroundColor: 'rgba(239,68,68,0.1)',
+        label: 'Workers (mc)',
+        data: h.map(p => p.workers_mc ?? 0),
+        borderColor: '#10b981',
+        backgroundColor: 'rgba(16,185,129,0.08)',
         tension: 0.3,
-        yAxisID: 'y1',
+        yAxisID: 'y',
+        borderDash: [4, 3],
+      },
+      {
+        label: 'Producer (mc)',
+        data: h.map(p => p.producer_mc ?? 0),
+        borderColor: '#6366f1',
+        backgroundColor: 'rgba(99,102,241,0.08)',
+        tension: 0.3,
+        yAxisID: 'y',
+        borderDash: [2, 4],
       },
     ]
   }
@@ -52,8 +63,12 @@ const chartOptions = {
   interaction: { mode: 'index', intersect: false },
   plugins: { legend: { position: 'top' } },
   scales: {
-    y:  { type: 'linear', position: 'left',  title: { display: true, text: 'CPU %' }, min: 0, max: 100 },
-    y1: { type: 'linear', position: 'right', title: { display: true, text: 'MB' }, min: 0, grid: { drawOnChartArea: false } },
+    y: {
+      type: 'linear',
+      position: 'left',
+      title: { display: true, text: 'Millicores' },
+      min: 0,
+    },
   }
 }
 </script>

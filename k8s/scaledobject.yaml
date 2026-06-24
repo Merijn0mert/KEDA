@@ -27,13 +27,14 @@ spec:
   triggers:
     - type: rabbitmq
       metadata:
-        # http-protocol gebruikt de RabbitMQ Management API
         protocol: http
         hostFromEnv: ""
         host: "http://rabbitmq.default.svc.cluster.local:15672"
         queueName: jobs
+        # QueueLength met includeUnacked telt ready + unacked berichten samen.
+        # Zo schaalt KEDA niet terug terwijl workers nog bezig zijn met jobs.
         mode: QueueLength
-        # 1 worker per 10 berichten in de queue
+        includeUnacked: "true"
         value: "10"
         vhostName: "/"
       authenticationRef:

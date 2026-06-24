@@ -9,16 +9,19 @@
       <div class="stat-label">Jobs in verwerking</div>
     </div>
     <div class="stat-card">
-      <div class="stat-value">{{ current.cpu_percent?.toFixed(1) }}%</div>
-      <div class="stat-label">Gemiddelde CPU (workers)</div>
+      <div class="stat-value">{{ current.platform_mc?.toFixed(0) ?? '0' }} <span style="font-size:14px;color:var(--text-muted)">mc</span></div>
+      <div class="stat-label">Platform CPU (live)</div>
     </div>
-    <div class="stat-card">
-      <div class="stat-value">{{ current.memory_mb?.toFixed(1) }} MB</div>
-      <div class="stat-label">Gemiddelde Geheugen (workers)</div>
+    <div class="stat-card" :class="{ active: (summary?.total_cpu_millicore_seconds ?? 0) > 0 }">
+      <div class="stat-value">{{ summary?.total_cpu_millicore_seconds?.toFixed(0) ?? '0' }} <span style="font-size:14px;color:var(--text-muted)">mc·s</span></div>
+      <div class="stat-label">CPU verbruik (run)</div>
     </div>
   </div>
 </template>
 
 <script setup>
-defineProps({ current: Object })
+defineProps({
+  current: Object,
+  summary: Object,
+})
 </script>

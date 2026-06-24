@@ -14,7 +14,7 @@
     </header>
 
     <main>
-      <StatusCards :current="current" />
+      <StatusCards :current="current" :summary="summary" />
       <KedaSummaryCard :summary="summary" />
       
       <div class="two-col">
@@ -100,7 +100,8 @@ main { max-width: 1200px; margin: 0 auto; padding: 24px; display: flex; flex-dir
 
 /* Status cards */
 .status-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
-@media (max-width: 700px) { .status-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 900px) { .status-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 600px) { .status-grid { grid-template-columns: repeat(2, 1fr); } }
 
 .stat-card {
   background: var(--surface);
